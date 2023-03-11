@@ -1,28 +1,97 @@
-import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { GoogleSheetsConfigService } from '../configs/google-sheets-config.service';
-import { sheets_v4 } from 'googleapis';
+import { DefaultRowDto } from '../dto/default-row.dto';
+import { DIRECTION, OrderBodyForm } from '../dto/order-body.form';
 
 @Injectable()
 export class GoogleSheetsService {
   private _sheets = null;
+
   public constructor(
     private googleSheetsConfigService: GoogleSheetsConfigService,
   ) { }
 
-  public getSheetsInstance() {
+  public async updateRow(
+    projectId: string,
+    sheet: string,
+    filters: any,
+    body: Record<string, any>,
+  ): Promise<any> {
+    const filtedRows = await this.getFiltered(projectId, sheet, filters, true);
+    if (filtedRows.length < 1)
+      throw new BadRequestException('Nenhum registro encontrado');
+    const headers = Object.keys(filtedRows[0]);
+
+    const newData = {};
+    const updatedData = [];
+    for (const h of headers) {
+      if (h in body && ![null, undefined].includes(body[h]))
+        newData[h] = body[h];
+    }
+    if (Object.keys(newData).length < 1)
+      throw new BadRequestException(
+        'Nenhum dado do body correspende aos cabeçalhos',
+      );
+
+    for (const currRow of filtedRows) {
+      const rowUpdated = Object.assign(new DefaultRowDto(), currRow, newData);
+      updatedData.push(rowUpdated);
+      const { __row_number, ...data } = rowUpdated;
+      const range = `${sheet}!A${__row_number}`;
+      const currentValue = Object.values(data);
+      await this.updateOneRow(projectId, range, currentValue);
+    }
+
+    return updatedData;
+  }
+
+  private async updateOneRow(
+    projectId: string,
+    range: string,
+    currentValue: unknown[],
+  ): Promise<boolean> {
+    const sheets = await this.getSheetsInstance();
+    const result = await (
+      await sheets
+    ).spreadsheets.values.update({
+      spreadsheetId: projectId,
+      range: range,
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values: [currentValue],
+      },
+    });
+    return result?.data?.updatedRows > 0 ? true : false;
+  }
+
+  public async getSheetsInstance() {
     if (this._sheets) return this._sheets;
-    this._sheets = this.googleSheetsConfigService.getSheets();
+    this._sheets = await this.googleSheetsConfigService.getSheets();
     return this._sheets;
   }
+  public async getSheetsValues() {
+    return (await this.getSheetsInstance()).spreadsheets.values;
+  }
+
   public async getAllRaw(spreadsheetId: string, range: string) {
-    const sheets = await this.getSheetsInstance();
-    return (
-      await sheets.spreadsheets.values.get({
+    try {
+      const values = await (
+        await this.getSheetsValues()
+      ).get({
         spreadsheetId,
         range,
-      })
-    ).data.values;
+      });
+      return values.data.values;
+    } catch (error) {
+      throw new InternalServerErrorException(error?.message);
+    }
   }
+
   public async getAll(spreadsheetId: string, range: string) {
     const raw = await this.getAllRaw(spreadsheetId, range);
     return this.convertRawToArray(raw);
@@ -32,7 +101,8 @@ export class GoogleSheetsService {
     range: string,
     filters = {},
     showRowNumber = false,
-  ) {
+  ): Promise<any[]> {
+    const time1 = new Date().getTime()
     const all = await this.getAll(spreadsheetId, range);
     const filteredData = all.reduce((acc, it, idx) => {
       for (const [key, value] of Object.entries(filters)) {
@@ -58,45 +128,64 @@ export class GoogleSheetsService {
     data: Record<string, unknown>,
   ) {
     const headers = await this.getHeaders(spreadsheetId, range);
-    const newRow = [];
+    const newRow = this.generateRowFromHeadersAndData(headers, data);
 
-    for (const h of headers) {
-      if (h in data) newRow.push(data[h]);
-      else newRow.push('');
-    }
     if (newRow.every((it) => !it))
-      throw new HttpException('Nenhum item foi inserido', 406);
+      throw new BadRequestException(
+        'Nenhum dado do body correspende aos cabeçalhos',
+      );
 
-    if ((await this.appendToSheet(spreadsheetId, range, newRow)) !== true)
+    const newRowNum = await this.appendOneRow(spreadsheetId, range, newRow);
+    if (!newRowNum)
       throw new HttpException('Não foi possivel salvar o item', 500);
 
-    return true;
+    const newRowObj = Object.assign(
+      new DefaultRowDto(),
+      Object.fromEntries(headers.map((h, idx) => [h, newRow[idx]])),
+    );
+
+    newRowObj.__row_number = newRowNum;
+    return newRowObj;
   }
 
-  private async appendToSheet(
+  private async appendOneRow(
     spreadsheetId: string,
     range: string,
     newRow: any[],
-  ): Promise<boolean> {
-    const sheets = await this.getSheetsInstance();
-    const result = await sheets.spreadsheets.values.append({
-      spreadsheetId: spreadsheetId,
-      range: `${range}`,
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: [newRow],
-      },
-    });
-    return result?.data?.updates?.updatedRows === 1 ? true : false;
+  ): Promise<number> {
+    try {
+      const result = await (
+        await this.getSheetsValues()
+      ).append({
+        spreadsheetId: spreadsheetId,
+        range: `${range}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [newRow],
+        },
+      });
+      const regex = /(\d+)$/;
+      const updatedRange: string = result?.data?.updates?.updatedRange;
+      const rowNum = updatedRange?.match(regex)[0];
+
+      return result?.data?.updates?.updatedRows > 0 ? Number(rowNum) : null;
+    } catch (error) {
+      throw new InternalServerErrorException(error?.message);
+    }
   }
 
   public async getHeaders(spreadsheetId: string, range: string) {
-    const sheets = await this.getSheetsInstance();
-    const raw = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: `${range}!1:1`,
-    });
-    return raw.data.values[0];
+    try {
+      const raw = await (
+        await this.getSheetsValues()
+      ).get({
+        spreadsheetId: spreadsheetId,
+        range: `${range}!1:1`,
+      });
+      return raw.data.values[0];
+    } catch (error) {
+      throw new InternalServerErrorException(error?.message);
+    }
   }
 
   public convertRawToArray(raw: any[]): any[] {
@@ -117,5 +206,47 @@ export class GoogleSheetsService {
       delete newObj[key];
     }
     return newObj;
+  }
+
+  public generateRowFromHeadersAndData(
+    headers: string[],
+    data: Record<string, unknown>,
+  ) {
+    return headers.map((h) => data[h] ?? '');
+  }
+  public async doesSheetExist(
+    spreadsheetId: string,
+    sheetName: string,
+  ): Promise<boolean> {
+    try {
+      const response = await (
+        await this.getSheetsInstance()
+      ).spreadsheets.get({
+        spreadsheetId,
+        includeGridData: false,
+      });
+
+      const sheet = response.data.sheets.find(
+        (sheet) => sheet.properties.title === sheetName,
+      );
+      return Boolean(sheet);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  public orderRows(body: OrderBodyForm, fieltedData: any[]) {
+    const { field, direction } = body.getFieldAndDirection();
+    const sign = direction === DIRECTION.asc ? 1 : -1;
+
+    return fieltedData.sort((a, b) => {
+      if (a[field] < b[field]) {
+        return -sign;
+      }
+      if (a[field] > b[field]) {
+        return sign;
+      }
+      return 0;
+    });
   }
 }
