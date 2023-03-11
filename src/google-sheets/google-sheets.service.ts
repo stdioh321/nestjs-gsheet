@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  HttpException,
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -8,36 +7,98 @@ import { GoogleSheetsConfigService } from '../configs/google-sheets-config.servi
 import { DefaultRowDto } from '../dto/default-row.dto';
 import { DIRECTION, OrderBodyForm } from '../dto/order-body.form';
 
+export const ROW_NUMBER = '__row_number';
 @Injectable()
 export class GoogleSheetsService {
   private _sheets = null;
-
+  public spreedsheetId = null;
+  public sheetName = null;
   public constructor(
     private googleSheetsConfigService: GoogleSheetsConfigService,
-  ) { }
+  ) {}
 
-  public async updateRow(
+  public async deleteRows(
+    projectId: string,
+    sheet: string,
+    filters: Record<string, unknown>,
+  ) {
+    const filtedRows = await this.getFilteredRows(
+      projectId,
+      sheet,
+      filters,
+      true,
+    );
+    if (filtedRows.length < 1)
+      throw new BadRequestException('Nenhum registro encontrado');
+    await this.handleDeleteRows(projectId, sheet, filtedRows);
+    return filtedRows;
+  }
+
+  public async handleDeleteRows(
+    projectId: string,
+    sheet: string,
+    filtedRows: DefaultRowDto[],
+  ): Promise<boolean> {
+    for (const row of filtedRows) {
+      const range = `${sheet}!A${row.__row_number}:ZZZ${row.__row_number}`;
+      await this.deleteOneRow(projectId, range);
+    }
+    return true;
+  }
+
+  public async deleteOneRow(projectId, range): Promise<boolean> {
+    const result = await (
+      await this.getSheetsValues()
+    ).clear({
+      spreadsheetId: projectId,
+      range: range,
+    });
+    return result?.status === 200 ? true : false;
+  }
+  public async updateRows(
     projectId: string,
     sheet: string,
     filters: any,
     body: Record<string, any>,
   ): Promise<any> {
-    const filtedRows = await this.getFiltered(projectId, sheet, filters, true);
+    const filtedRows = await this.getFilteredRows(
+      projectId,
+      sheet,
+      filters,
+      true,
+    );
     if (filtedRows.length < 1)
       throw new BadRequestException('Nenhum registro encontrado');
     const headers = Object.keys(filtedRows[0]);
 
-    const newData = {};
-    const updatedData = [];
-    for (const h of headers) {
-      if (h in body && ![null, undefined].includes(body[h]))
-        newData[h] = body[h];
-    }
+    const newData = headers.reduce((acc, h) => {
+      const value = body[h];
+      if (h in body && ![null, undefined].includes(value)) acc[h] = value;
+      return acc;
+    }, {});
+
     if (Object.keys(newData).length < 1)
       throw new BadRequestException(
         'Nenhum dado do body correspende aos cabeçalhos',
       );
 
+    const updatedData = await this.handleUpdateFilteredRows(
+      projectId,
+      sheet,
+      filtedRows,
+      newData,
+    );
+
+    return updatedData;
+  }
+
+  public async handleUpdateFilteredRows(
+    projectId: string,
+    sheet: string,
+    filtedRows: any[],
+    newData: {},
+  ) {
+    const updatedData: DefaultRowDto[] = [];
     for (const currRow of filtedRows) {
       const rowUpdated = Object.assign(new DefaultRowDto(), currRow, newData);
       updatedData.push(rowUpdated);
@@ -46,7 +107,6 @@ export class GoogleSheetsService {
       const currentValue = Object.values(data);
       await this.updateOneRow(projectId, range, currentValue);
     }
-
     return updatedData;
   }
 
@@ -78,7 +138,7 @@ export class GoogleSheetsService {
     return (await this.getSheetsInstance()).spreadsheets.values;
   }
 
-  public async getAllRaw(spreadsheetId: string, range: string) {
+  public async getAllRowsRaw(spreadsheetId: string, range: string) {
     try {
       const values = await (
         await this.getSheetsValues()
@@ -88,22 +148,29 @@ export class GoogleSheetsService {
       });
       return values.data.values;
     } catch (error) {
-      throw new InternalServerErrorException(error?.message);
+      this.handleCommonExceptions(error);
     }
   }
 
-  public async getAll(spreadsheetId: string, range: string) {
-    const raw = await this.getAllRaw(spreadsheetId, range);
+  private handleCommonExceptions(error: any) {
+    if (error?.message?.includes('Unable to parse range'))
+      throw new BadRequestException('Sheet não encontrado');
+    if (error?.message?.includes('Requested entity was not found.'))
+      throw new BadRequestException('ProjectId não encontrado');
+    throw new InternalServerErrorException(error?.message);
+  }
+
+  public async getAllRows(spreadsheetId: string, range: string) {
+    const raw = await this.getAllRowsRaw(spreadsheetId, range);
     return this.convertRawToArray(raw);
   }
-  public async getFiltered(
+  public async getFilteredRows(
     spreadsheetId: string,
     range: string,
     filters = {},
-    showRowNumber = false,
-  ): Promise<any[]> {
-    const time1 = new Date().getTime()
-    const all = await this.getAll(spreadsheetId, range);
+    showRowNumber = true,
+  ): Promise<DefaultRowDto[]> {
+    const all = await this.getAllRows(spreadsheetId, range);
     const filteredData = all.reduce((acc, it, idx) => {
       for (const [key, value] of Object.entries(filters)) {
         if (it[key] !== value.toString()) return acc;
@@ -113,7 +180,7 @@ export class GoogleSheetsService {
         {
           ...it,
           ...(showRowNumber && {
-            __row_number: idx + 2,
+            [ROW_NUMBER]: idx + 2,
           }),
         },
       ];
@@ -137,7 +204,7 @@ export class GoogleSheetsService {
 
     const newRowNum = await this.appendOneRow(spreadsheetId, range, newRow);
     if (!newRowNum)
-      throw new HttpException('Não foi possivel salvar o item', 500);
+      throw new InternalServerErrorException('Não foi possivel salvar o item');
 
     const newRowObj = Object.assign(
       new DefaultRowDto(),
@@ -184,7 +251,7 @@ export class GoogleSheetsService {
       });
       return raw.data.values[0];
     } catch (error) {
-      throw new InternalServerErrorException(error?.message);
+      this.handleCommonExceptions(error);
     }
   }
 
@@ -197,15 +264,6 @@ export class GoogleSheetsService {
       ),
     );
     return result;
-  }
-
-  public static removeItensFromObj(obj1, obj2) {
-    const newObj = { ...obj1 };
-
-    for (const key in obj2) {
-      delete newObj[key];
-    }
-    return newObj;
   }
 
   public generateRowFromHeadersAndData(

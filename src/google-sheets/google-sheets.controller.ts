@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Post,
@@ -9,7 +10,8 @@ import {
 } from '@nestjs/common';
 import { SheetParamsForm } from '../dto/sheet-params.form';
 import { GoogleSheetsService } from './google-sheets.service';
-import { DIRECTION, OrderBodyForm } from '../dto/order-body.form';
+import { OrderBodyForm } from '../dto/order-body.form';
+import { UtilsService } from '../services/utils/utils.service';
 
 @Controller('google-sheets')
 export class GoogleSheetsController {
@@ -22,8 +24,8 @@ export class GoogleSheetsController {
   ): Promise<any[]> {
     const { projectId, sheet } = sheetParams;
 
-    const filters = GoogleSheetsService.removeItensFromObj(query, sheetParams);
-    const fieltedData = await this.googleSheetsService.getFiltered(
+    const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
+    const fieltedData = await this.googleSheetsService.getFilteredRows(
       projectId,
       sheet,
       filters,
@@ -52,13 +54,23 @@ export class GoogleSheetsController {
     @Query() query: Record<string, any>,
   ): Promise<any> {
     const { projectId, sheet } = sheetParams;
-    const filters = GoogleSheetsService.removeItensFromObj(query, sheetParams);
+    const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
 
-    return await this.googleSheetsService.updateRow(
+    return await this.googleSheetsService.updateRows(
       projectId,
       sheet,
       filters,
       body,
     );
+  }
+  @Delete('')
+  async deleteRow(
+    @Query() sheetParams: SheetParamsForm,
+    @Query() query: Record<string, any>,
+  ): Promise<any> {
+    const { projectId, sheet } = sheetParams;
+    const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
+
+    return await this.googleSheetsService.deleteRows(projectId, sheet, filters);
   }
 }
