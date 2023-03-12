@@ -60,7 +60,7 @@ const swaggerApiExample200Response = [
 ];
 @Controller('google-sheets')
 export class GoogleSheetsController {
-  public constructor(private googleSheetsService: GoogleSheetsService) {}
+  public constructor(private googleSheetsService: GoogleSheetsService) { }
 
   @ApiOperation({ summary: 'Get filtered rows' })
   @ApiQuery(swaggerApiQuery)
@@ -155,6 +155,7 @@ export class GoogleSheetsController {
       },
     },
   })
+  @ApiOperation({ summary: 'Add row' })
   @Post('')
   async addRow(@Query() sheetParams: SheetParamsForm, @Body() body) {
     const { projectId, sheet } = sheetParams;
