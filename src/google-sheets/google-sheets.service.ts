@@ -67,7 +67,7 @@ export class GoogleSheetsService {
     filters: any,
     body: Record<string, any>,
   ): Promise<RowDto[]> {
-    
+
     if (Object.keys(filters).length < 1)
       throw new BadRequestException('Nenhum filtro foi informado');
 
@@ -306,20 +306,21 @@ export class GoogleSheetsService {
     }
   }
 
-  public orderRows(
+  public sortRows(
     fieldDirecction: FieldAndDirection,
     fieltedData: any[],
   ): RowDto[] {
     const sign = fieldDirecction.direction === DIRECTION.asc ? 1 : -1;
 
     return fieltedData.sort((a, b) => {
-      if (a[fieldDirecction.field] < b[fieldDirecction.field]) {
-        return -sign;
-      }
-      if (a[fieldDirecction.field] > b[fieldDirecction.field]) {
-        return sign;
-      }
-      return 0;
+      const aVal: string | number =
+        parseFloat(a[fieldDirecction.field]) || a[fieldDirecction.field] || '';
+      const bVal: string | number =
+        parseFloat(b[fieldDirecction.field]) || b[fieldDirecction.field] || '';
+
+      if (typeof aVal == 'number' && typeof bVal == 'number') return (aVal - bVal) * sign;
+
+      return aVal.toString().localeCompare(bVal.toString()) * sign;
     });
   }
   public valueInFilter(value: string, filterValue: string) {

@@ -117,7 +117,7 @@ export class GoogleSheetsController {
       throw new NotFoundException('Nenhum registro encontrado');
     const fieldDirection = UtilsService.getFieldAndDirection(headers.sort);
     return fieldDirection
-      ? this.googleSheetsService.orderRows(fieldDirection, fieltedData)
+      ? this.googleSheetsService.sortRows(fieldDirection, fieltedData)
       : fieltedData;
   }
 
