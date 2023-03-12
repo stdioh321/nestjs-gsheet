@@ -158,7 +158,6 @@ export class GoogleSheetsController {
   })
   @ApiOperation({ summary: 'Add row' })
   @Post('')
-  @HttpCode(200)
   async addRow(@Query() sheetParams: SheetParamsForm, @Body() body) {
     const { projectId, sheet } = sheetParams;
     return await this.googleSheetsService.addRow(projectId, sheet, body);
