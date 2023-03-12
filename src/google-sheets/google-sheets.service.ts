@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { GoogleSheetsConfigService } from '../configs/google-sheets-config.service';
 import { RowDto } from '../dto/row.dto';
-import { DIRECTION, OrderBodyForm } from '../dto/order-body.form';
+import { UtilsService, DIRECTION, FieldAndDirection } from '../services/utils/utils.service';
 
 export const ROW_NUMBER = '__row_number';
 export const OPERATOR_REGEX = /^(<=|>=|=|<|>|!)(.+)$/;
@@ -16,7 +16,7 @@ export class GoogleSheetsService {
   public sheetName = null;
   public constructor(
     private googleSheetsConfigService: GoogleSheetsConfigService,
-  ) { }
+  ) {}
 
   public async deleteRows(
     projectId: string,
@@ -296,15 +296,17 @@ export class GoogleSheetsService {
     }
   }
 
-  public orderRows(body: OrderBodyForm, fieltedData: any[]): RowDto[] {
-    const { field, direction } = body.getFieldAndDirection();
-    const sign = direction === DIRECTION.asc ? 1 : -1;
+  public orderRows(
+    fieldDirecction: FieldAndDirection,
+    fieltedData: any[],
+  ): RowDto[] {
+    const sign = fieldDirecction.direction === DIRECTION.asc ? 1 : -1;
 
     return fieltedData.sort((a, b) => {
-      if (a[field] < b[field]) {
+      if (a[fieldDirecction.field] < b[fieldDirecction.field]) {
         return -sign;
       }
-      if (a[field] > b[field]) {
+      if (a[fieldDirecction.field] > b[fieldDirecction.field]) {
         return sign;
       }
       return 0;

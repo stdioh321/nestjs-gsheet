@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   NotFoundException,
   Post,
   Put,
@@ -10,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { SheetParamsForm } from '../dto/sheet-params.form';
 import { GoogleSheetsService } from './google-sheets.service';
-import { OrderBodyForm } from '../dto/order-body.form';
 import { UtilsService } from '../services/utils/utils.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -24,8 +24,9 @@ export class GoogleSheetsController {
   async getRows(
     @Query() sheetParams: SheetParamsForm,
     @Query() query: Record<string, any>,
-    @Body() body: OrderBodyForm,
+    @Headers() headers,
   ) {
+
     const { projectId, sheet } = sheetParams;
 
     const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
@@ -37,8 +38,9 @@ export class GoogleSheetsController {
     );
     if (fieltedData.length < 1)
       throw new NotFoundException('Nenhum registro encontrado');
-    return body.order
-      ? this.googleSheetsService.orderRows(body, fieltedData)
+    const fieldDirection = UtilsService.getFieldAndDirection(headers.sort);
+    return fieldDirection
+      ? this.googleSheetsService.orderRows(fieldDirection, fieltedData)
       : fieltedData;
   }
 

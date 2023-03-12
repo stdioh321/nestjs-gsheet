@@ -1,0 +1,221 @@
+{
+	"info": {
+		"_postman_id": "1934f0e1-827f-4b80-90c1-9fd818742ba1",
+		"name": "nestjs-gsheet",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "getRows",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order\":\"phone,desc\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&phone=>3",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"google-sheets"
+					],
+					"query": [
+						{
+							"key": "projectId",
+							"value": "{{projectId}}"
+						},
+						{
+							"key": "a",
+							"value": "9999",
+							"disabled": true
+						},
+						{
+							"key": "sheet",
+							"value": "Sheet1",
+							"disabled": true
+						},
+						{
+							"key": "phone",
+							"value": ">3"
+						},
+						{
+							"key": "name",
+							"value": "<=G",
+							"disabled": true
+						},
+						{
+							"key": "price",
+							"value": ">1.6",
+							"disabled": true
+						},
+						{
+							"key": "email",
+							"value": "john.doe@email.com",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "addRow",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Mario 01\",\n    \"phone\": \"11912345678\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&sheet=Sheet1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"google-sheets"
+					],
+					"query": [
+						{
+							"key": "projectId",
+							"value": "{{projectId}}"
+						},
+						{
+							"key": "sheet",
+							"value": "Sheet1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "updateRow",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Nome alterado2\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&sheet=Sheet1&phone=5",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"google-sheets"
+					],
+					"query": [
+						{
+							"key": "projectId",
+							"value": "{{projectId}}"
+						},
+						{
+							"key": "sheet",
+							"value": "Sheet1"
+						},
+						{
+							"key": "phone",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "deleteRow",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"nome_alterado123\",\n    \"createdAt\": \"2000-01-01\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&sheet=Sheet1&name=John",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"google-sheets"
+					],
+					"query": [
+						{
+							"key": "projectId",
+							"value": "{{projectId}}"
+						},
+						{
+							"key": "sheet",
+							"value": "Sheet1"
+						},
+						{
+							"key": "name",
+							"value": "John"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "default"
+		},
+		{
+			"key": "projectId",
+			"value": "1-r2jRuEgjLwyllwVpDYeJyQjrtNDo6_kYo8FVXilN6c",
+			"type": "default"
+		}
+	]
+}
