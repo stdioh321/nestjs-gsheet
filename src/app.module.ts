@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { GoogleSheetsController } from './google-sheets/google-sheets.controller';
 import { GoogleSheetsConfigService } from './configs/google-sheets-config.service';
 import { GoogleSheetsService } from './google-sheets/google-sheets.service';
@@ -15,13 +13,8 @@ import configuration from './configs/configuration';
       load: [configuration],
     }),
   ],
-  controllers: [AppController, GoogleSheetsController],
-  providers: [
-    AppService,
-    GoogleSheetsService,
-    GoogleSheetsConfigService,
-    UtilsService,
-  ],
+  controllers: [GoogleSheetsController],
+  providers: [GoogleSheetsService, GoogleSheetsConfigService, UtilsService],
 })
 export class AppModule {}
 

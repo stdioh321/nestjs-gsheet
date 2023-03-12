@@ -25,7 +25,7 @@ export class GoogleSheetsController {
     @Query() sheetParams: SheetParamsForm,
     @Query() query: Record<string, any>,
     @Body() body: OrderBodyForm,
-  ): Promise<any[]> {
+  ) {
     const { projectId, sheet } = sheetParams;
 
     const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
@@ -37,26 +37,23 @@ export class GoogleSheetsController {
     );
     if (fieltedData.length < 1)
       throw new NotFoundException('Nenhum registro encontrado');
-    if (body.order)
-      return this.googleSheetsService.orderRows(body, fieltedData);
-    return fieltedData;
+    return body.order
+      ? this.googleSheetsService.orderRows(body, fieltedData)
+      : fieltedData;
   }
 
   @Post('')
-  async addRow(
-    @Query() sheetParams: SheetParamsForm,
-    @Body() body,
-  ): Promise<any> {
+  async addRow(@Query() sheetParams: SheetParamsForm, @Body() body) {
     const { projectId, sheet } = sheetParams;
     return await this.googleSheetsService.addRow(projectId, sheet, body);
   }
 
   @Put('')
-  async updateRow(
+  async updateRows(
     @Query() sheetParams: SheetParamsForm,
     @Body() body,
     @Query() query: Record<string, any>,
-  ): Promise<any> {
+  ) {
     const { projectId, sheet } = sheetParams;
     const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
 
@@ -68,10 +65,10 @@ export class GoogleSheetsController {
     );
   }
   @Delete('')
-  async deleteRow(
+  async deleteRows(
     @Query() sheetParams: SheetParamsForm,
     @Query() query: Record<string, any>,
-  ): Promise<any> {
+  ) {
     const { projectId, sheet } = sheetParams;
     const filters = UtilsService.removePropertiesFromObj(query, sheetParams);
 

@@ -1,5 +1,5 @@
 import { Matches } from 'class-validator';
 
-export class DefaultRowDto {
+export class RowDto {
   __row_number: number;
 }

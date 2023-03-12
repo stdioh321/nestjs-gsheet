@@ -4,10 +4,11 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { GoogleSheetsConfigService } from '../configs/google-sheets-config.service';
-import { DefaultRowDto } from '../dto/default-row.dto';
+import { RowDto } from '../dto/row.dto';
 import { DIRECTION, OrderBodyForm } from '../dto/order-body.form';
 
 export const ROW_NUMBER = '__row_number';
+export const OPERATOR_REGEX = /^(<=|>=|=|<|>|!)(.+)$/;
 @Injectable()
 export class GoogleSheetsService {
   private _sheets = null;
@@ -15,13 +16,13 @@ export class GoogleSheetsService {
   public sheetName = null;
   public constructor(
     private googleSheetsConfigService: GoogleSheetsConfigService,
-  ) {}
+  ) { }
 
   public async deleteRows(
     projectId: string,
     sheet: string,
     filters: Record<string, unknown>,
-  ) {
+  ): Promise<RowDto[]> {
     const filtedRows = await this.getFilteredRows(
       projectId,
       sheet,
@@ -37,7 +38,7 @@ export class GoogleSheetsService {
   public async handleDeleteRows(
     projectId: string,
     sheet: string,
-    filtedRows: DefaultRowDto[],
+    filtedRows: RowDto[],
   ): Promise<boolean> {
     for (const row of filtedRows) {
       const range = `${sheet}!A${row.__row_number}:ZZZ${row.__row_number}`;
@@ -60,7 +61,7 @@ export class GoogleSheetsService {
     sheet: string,
     filters: any,
     body: Record<string, any>,
-  ): Promise<any> {
+  ): Promise<RowDto[]> {
     const filtedRows = await this.getFilteredRows(
       projectId,
       sheet,
@@ -98,9 +99,9 @@ export class GoogleSheetsService {
     filtedRows: any[],
     newData: {},
   ) {
-    const updatedData: DefaultRowDto[] = [];
+    const updatedData: RowDto[] = [];
     for (const currRow of filtedRows) {
-      const rowUpdated = Object.assign(new DefaultRowDto(), currRow, newData);
+      const rowUpdated = Object.assign(new RowDto(), currRow, newData);
       updatedData.push(rowUpdated);
       const { __row_number, ...data } = rowUpdated;
       const range = `${sheet}!A${__row_number}`;
@@ -169,16 +170,18 @@ export class GoogleSheetsService {
     range: string,
     filters = {},
     showRowNumber = true,
-  ): Promise<DefaultRowDto[]> {
+  ): Promise<RowDto[]> {
     const all = await this.getAllRows(spreadsheetId, range);
-    const filteredData = all.reduce((acc, it, idx) => {
+    const filteredData = all.reduce((acc, row, idx) => {
       for (const [key, value] of Object.entries(filters)) {
-        if (it[key] !== value.toString()) return acc;
+        const v = value.toString();
+        if (!this.valueInFilter(row[key], v)) return acc;
       }
+
       return [
         ...acc,
         {
-          ...it,
+          ...row,
           ...(showRowNumber && {
             [ROW_NUMBER]: idx + 2,
           }),
@@ -193,7 +196,7 @@ export class GoogleSheetsService {
     spreadsheetId: string,
     range: string,
     data: Record<string, unknown>,
-  ) {
+  ): Promise<RowDto> {
     const headers = await this.getHeaders(spreadsheetId, range);
     const newRow = this.generateRowFromHeadersAndData(headers, data);
 
@@ -207,7 +210,7 @@ export class GoogleSheetsService {
       throw new InternalServerErrorException('Não foi possivel salvar o item');
 
     const newRowObj = Object.assign(
-      new DefaultRowDto(),
+      new RowDto(),
       Object.fromEntries(headers.map((h, idx) => [h, newRow[idx]])),
     );
 
@@ -293,7 +296,7 @@ export class GoogleSheetsService {
     }
   }
 
-  public orderRows(body: OrderBodyForm, fieltedData: any[]) {
+  public orderRows(body: OrderBodyForm, fieltedData: any[]): RowDto[] {
     const { field, direction } = body.getFieldAndDirection();
     const sign = direction === DIRECTION.asc ? 1 : -1;
 
@@ -307,4 +310,24 @@ export class GoogleSheetsService {
       return 0;
     });
   }
+  public valueInFilter(value: string, filterValue: string) {
+    if (value === filterValue) return true;
+    const [_, operator, content] = filterValue.match(OPERATOR_REGEX) || [];
+    if (!operator || !content || !(operator in OPERATORSFN)) return false;
+
+    const contentParsed: string | number = parseFloat(content) || content;
+    const valueParsed: string | number = parseFloat(value) || value;
+
+    const operatorFn = OPERATORSFN[operator];
+    return operatorFn(valueParsed, contentParsed);
+  }
 }
+
+export const OPERATORSFN = {
+  '=': (a, b) => a === b,
+  '!': (a, b) => a !== b,
+  '>': (a, b) => a > b,
+  '>=': (a, b) => a >= b,
+  '<': (a, b) => a < b,
+  '<=': (a, b) => a <= b,
+};
