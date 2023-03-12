@@ -12,10 +12,16 @@
 			},
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "sort",
+						"value": "name,asc",
+						"type": "default"
+					}
+				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"order\":\"phone,desc\"\n}",
+					"raw": "",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -23,7 +29,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&phone=>3",
+					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&phone=>=5",
 					"host": [
 						"{{baseUrl}}"
 					],
@@ -47,7 +53,7 @@
 						},
 						{
 							"key": "phone",
-							"value": ">3"
+							"value": ">=5"
 						},
 						{
 							"key": "name",
@@ -160,7 +166,7 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&sheet=Sheet1&name=John",
+					"raw": "{{baseUrl}}/google-sheets?projectId={{projectId}}&sheet=Sheet1&name=Mario 01",
 					"host": [
 						"{{baseUrl}}"
 					],
@@ -178,7 +184,7 @@
 						},
 						{
 							"key": "name",
-							"value": "John"
+							"value": "Mario 01"
 						}
 					]
 				}
@@ -210,6 +216,12 @@
 		{
 			"key": "baseUrl",
 			"value": "http://localhost:3000",
+			"type": "default",
+			"disabled": true
+		},
+		{
+			"key": "baseUrl",
+			"value": "https://nestjs-gsheet.onrender.com",
 			"type": "default"
 		},
 		{
