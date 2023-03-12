@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { GoogleSheetsConfigService } from '../configs/google-sheets-config.service';
 import { RowDto } from '../dto/row.dto';
-import { UtilsService, DIRECTION, FieldAndDirection } from '../services/utils/utils.service';
+import {
+  UtilsService,
+  DIRECTION,
+  FieldAndDirection,
+} from '../services/utils/utils.service';
 
 export const ROW_NUMBER = '__row_number';
 export const OPERATOR_REGEX = /^(<=|>=|=|<|>|!)(.+)$/;
@@ -63,12 +67,17 @@ export class GoogleSheetsService {
     filters: any,
     body: Record<string, any>,
   ): Promise<RowDto[]> {
+    
+    if (Object.keys(filters).length < 1)
+      throw new BadRequestException('Nenhum filtro foi informado');
+
     const filtedRows = await this.getFilteredRows(
       projectId,
       sheet,
       filters,
       true,
     );
+
     if (filtedRows.length < 1)
       throw new NotFoundException('Nenhum registro encontrado');
     const headers = Object.keys(filtedRows[0]);
