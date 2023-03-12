@@ -5,6 +5,7 @@ import { GoogleSheetsService } from './google-sheets/google-sheets.service';
 import { UtilsService } from './services/utils/utils.service';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './configs/configuration';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -13,10 +14,10 @@ import configuration from './configs/configuration';
       load: [configuration],
     }),
   ],
-  controllers: [GoogleSheetsController],
+  controllers: [AppController, GoogleSheetsController],
   providers: [GoogleSheetsService, GoogleSheetsConfigService, UtilsService],
 })
-export class AppModule {}
+export class AppModule { }
 
 function getEnvFilename() {
   return `.env${process.env.NODE_ENV ? `.${process.env.NODE_ENV}` : ``}`;
