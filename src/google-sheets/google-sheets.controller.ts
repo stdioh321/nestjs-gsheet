@@ -12,10 +12,14 @@ import { SheetParamsForm } from '../dto/sheet-params.form';
 import { GoogleSheetsService } from './google-sheets.service';
 import { OrderBodyForm } from '../dto/order-body.form';
 import { UtilsService } from '../services/utils/utils.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('google-sheets')
 export class GoogleSheetsController {
-  public constructor(private googleSheetsService: GoogleSheetsService) {}
+  public constructor(
+    private googleSheetsService: GoogleSheetsService,
+    private configService: ConfigService,
+  ) { }
   @Get('')
   async getRows(
     @Query() sheetParams: SheetParamsForm,

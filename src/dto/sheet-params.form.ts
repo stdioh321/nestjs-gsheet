@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { IsString, IsOptional, MinLength } from 'class-validator';
 
 export class SheetParamsForm {
@@ -8,5 +9,5 @@ export class SheetParamsForm {
   @IsOptional()
   @IsString()
   @MinLength(1)
-  sheet?: string = `Sheet1`;
+  sheet?: string = process.env.SHEET_NAME || 'Sheet1';
 }
