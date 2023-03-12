@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { GoogleSheetsConfigService } from '../configs/google-sheets-config.service';
 import { RowDto } from '../dto/row.dto';
@@ -30,7 +31,7 @@ export class GoogleSheetsService {
       true,
     );
     if (filtedRows.length < 1)
-      throw new BadRequestException('Nenhum registro encontrado');
+      throw new NotFoundException('Nenhum registro encontrado');
     await this.handleDeleteRows(projectId, sheet, filtedRows);
     return filtedRows;
   }
@@ -69,7 +70,7 @@ export class GoogleSheetsService {
       true,
     );
     if (filtedRows.length < 1)
-      throw new BadRequestException('Nenhum registro encontrado');
+      throw new NotFoundException('Nenhum registro encontrado');
     const headers = Object.keys(filtedRows[0]);
 
     const newData = headers.reduce((acc, h) => {
