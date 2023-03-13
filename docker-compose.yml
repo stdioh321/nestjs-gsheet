@@ -8,3 +8,51 @@ services:
       dockerfile: ./infra/Dockerfile
     ports:
       - "3000:3000"
+  mongo:
+    container_name: mongo
+    image: mongo:4.2
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - graylog_network
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    environment:
+      - cluster.name=graylog
+      - node.name=graylog-elasticsearch
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - graylog_network
+  graylog:
+    container_name: graylog
+    image: graylog/graylog:4.2
+    environment:
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://localhost:9000/
+      - GRAYLOG_ROOT_PASSWORD_SHA2=e3c652f0ba0b4801205814f8b6bc49672c4c74e25b497770bb89b22cdeb4e951
+      # yourpassword
+      - GRAYLOG_PASSWORD_SECRET=e3c652f0ba0b4801205814f8b6bc49672c4c74e25b497770bb89b22cdeb4e951
+      # yourpassword
+      - GRAYLOG_REST_TRANSPORT_URI=http://graylog:12900/api/
+      - GRAYLOG_ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - 9000:9000
+      - 12201:12201/udp
+      - 1514:1514/udp
+    depends_on:
+      - mongo
+      - elasticsearch
+    networks:
+      - graylog_network
+networks:
+  graylog_network:
+    driver: bridge
+volumes:
+  mongo_data:
+  es_data:
